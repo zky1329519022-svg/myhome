@@ -37,7 +37,7 @@ const readings = [
 const typeColor: Record<NodeType,string> = { 念头:"#c6b078",问题:"#9eb5bc",记忆:"#b99475",灵感:"#d3ad61",人物:"#ac8e86",地点:"#819e8d",梦境:"#918aa7",情绪:"#b88d82",决定:"#9fa86f" };
 
 function IconButton({label,children,onClick,className=""}:{label:string;children:React.ReactNode;onClick?:()=>void;className?:string}) {
-  return <button aria-label={label} title={label} onClick={onClick} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-black/25 text-[#eee3cc] backdrop-blur-md transition hover:border-[#e9c381]/50 hover:bg-black/45 ${className}`}>{children}</button>;
+  return <button aria-label={label} title={label} onClick={onClick} className={`utility-button grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/20 bg-black/35 text-[#f4e6cb] backdrop-blur-md transition hover:border-[#efc478]/70 hover:bg-[#20160d]/65 ${className}`}>{children}</button>;
 }
 
 export default function FarfieldHome() {
@@ -75,7 +75,11 @@ export default function FarfieldHome() {
 
   return (
     <main className={`${weather==="rain"?"scene-rain":"scene-sun"} ${reduced?"reduced-motion":""} ${contrast?"high-contrast":""} relative h-[100svh] w-screen overflow-hidden bg-[#0b1210]`} onPointerMove={e=>!reduced&&setPointer({x:(e.clientX/innerWidth-.5)*10,y:(e.clientY/innerHeight-.5)*8})}>
-      {scene!=="stars" && <img src={outside?"/farfield-outdoor.png":"/cabin-interior.png"} alt={outside?"远山草地、一位独坐的人与一间亮着灯的小木屋":"有壁炉、扶手椅和窗边书桌的木屋室内"} className={`scene-bg ${outside?"outdoor-bg":""}`} style={{transform:`scale(${useRoomBg?1.025:1.01}) translate(${pointer.x}px,${pointer.y}px)`}} />}
+      {scene!=="stars" && <img src={outside?"/farfield-outdoor.png":"/cabin-interior.png"} alt={outside?"远山草地、一位独坐的人与一间亮着灯的小木屋":"有壁炉、扶手椅和窗边书桌的木屋室内"} className={`scene-bg ${outside?"outdoor-bg":""}`} style={{transform:`scale(${useRoomBg?1.025:1.01}) translate(${pointer.x*.45}px,${pointer.y*.4}px)`}} />}
+      {outside && <div className="outdoor-depth" aria-hidden="true">
+        <div className="outdoor-depth-layer outdoor-mid"><img src="/farfield-outdoor.png" alt="" className="depth-img" style={{transform:`scale(1.035) translate(${pointer.x*1.25}px,${pointer.y*1.05}px)`}} /></div>
+        <div className="outdoor-depth-layer outdoor-near"><img src="/farfield-outdoor.png" alt="" className="depth-img" style={{transform:`scale(1.065) translate(${pointer.x*2.1}px,${pointer.y*1.75}px)`}} /></div>
+      </div>}
       {scene!=="stars" && <><div className="vignette"/><div className="rain"/><div className="dust absolute inset-0 opacity-20 pointer-events-none"/></>}
 
       <header className="absolute inset-x-0 top-0 z-40 flex items-center justify-between p-4 sm:p-6">
@@ -113,13 +117,17 @@ export default function FarfieldHome() {
 }
 
 function Outdoor({onEnter}:{onEnter:()=>void}) {
-  return <section className="absolute inset-0 z-20">
+  return <section className="outdoor-stage absolute inset-0 z-20">
     <div className="absolute bottom-[8%] left-[6%] max-w-[28rem] text-[#f3ead8] drop-shadow-[0_3px_14px_#000] sm:bottom-[10%] sm:left-[8%]">
       <p className="mb-3 text-xs tracking-[.32em] text-white/55">远野 · 无人来访的下午</p>
       <h1 className="text-[clamp(1.25rem,2.2vw,2rem)] font-normal leading-relaxed tracking-[.08em]">这里没有答案，<br/>只有正在生长的念头。</h1>
     </div>
-    <button className="hotspot right-[5%] top-[21%] h-[54%] w-[36%] sm:right-[3%] sm:top-[17%] sm:w-[38%]" data-label="进入" aria-label="进入小木屋" onClick={onEnter}/>
-    <p className="absolute bottom-5 right-5 text-[.68rem] tracking-[.2em] text-white/45">靠近亮着灯的门</p>
+    <div className="entry-guide" aria-hidden="true">
+      <span>沿灯光而行</span>
+      <svg viewBox="0 0 260 118" preserveAspectRatio="none"><path d="M4 17 C 74 12, 128 39, 164 69 S 218 96, 250 105"/><circle cx="251" cy="105" r="3"/></svg>
+    </div>
+    <button className="entry-beacon" data-label="进入木屋" aria-label="进入小木屋" onClick={onEnter}><Home size={14}/><span>进入木屋</span></button>
+    <p className="outdoor-depth-note absolute bottom-5 right-5 text-[.68rem] tracking-[.2em] text-white/45">移动视线，靠近那束暖光</p>
   </section>;
 }
 
