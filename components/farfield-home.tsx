@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, BookOpen, CalendarDays, CloudRain, Download, Home, Link2, Maximize2,
-  MoonStar, Music2, Plus, RotateCcw, RotateCw, Search, Settings2, Sparkles,
+  MoonStar, Plus, RotateCcw, RotateCw, Search, Settings2, Sparkles,
   Sun, Trash2, Upload, Volume2, VolumeX, X, ZoomIn, ZoomOut
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -36,6 +36,26 @@ const readings = [
 ];
 const typeColor: Record<NodeType,string> = { 念头:"#c6b078",问题:"#9eb5bc",记忆:"#b99475",灵感:"#d3ad61",人物:"#ac8e86",地点:"#819e8d",梦境:"#918aa7",情绪:"#b88d82",决定:"#9fa86f" };
 
+const sceneNames: Record<Scene,string> = {outdoor:"雨中散步",interior:"回到屋里",reading:"一起阅读",desk:"窗边书桌",write:"写下一念",review:"今日回望",library:"记忆书架",stars:"思维星图"};
+const outdoorPhotos = ["IMG_5853.PNG","IMG_5862.PNG","IMG_5863.PNG"];
+const roomPhotos = ["IMG_5858.PNG","IMG_5861.PNG","IMG_5860.PNG","IMG_5856.PNG"];
+const scenePhotos: Record<Scene,string> = {outdoor:"IMG_5853.PNG",interior:"IMG_5858.PNG",reading:"IMG_5858.PNG",desk:"IMG_5854.PNG",write:"IMG_5856.PNG",review:"IMG_5859.PNG",library:"IMG_5857.PNG",stars:"IMG_5864.PNG"};
+const roxyWords: Record<Scene,string[]> = {
+ outdoor:["你来了。陪我走一段吧，雨里的城市很安静。","不用急着到达哪里。我们可以在这里多待一会儿。"],
+ interior:["进来吧。你想和我读一会儿，还是写点什么？","雨还没停，不过这里正好可以歇歇。"],
+ reading:["这段文字，你也喜欢吗？我想听听你的想法。","慢慢翻吧。有些句子，值得再读一遍。"],
+ desk:["我把位置留给你了。今天有什么想记下来？","一个念头、一段回忆，或者一颗新的星星。"],
+ write:["我在听。把此刻的心情留在这里吧。","不用整理好再开口。零碎的想法也很珍贵。"],
+ review:["一起看看，那些被时间留下的小事吧。","这些是回望示例。你自己的记录会留在这台设备里。"],
+ library:["选一本吧，我陪你一起翻。","熟悉的文字，也会在不同的日子里长出新意思。"],
+ stars:["每个念头都可以是一颗星。我们一起把它们连起来吧。","点一下新的星星，就可以写下它的故事。"]
+};
+function RoxyDialogue({scene,children,compact=false}:{scene:Scene;children?:React.ReactNode;compact?:boolean}) {
+ const [line,setLine]=useState(0);
+ return <aside className={`roxy-dialogue ${compact?"roxy-compact":""}`} aria-label="与 Roxy 互动"><button className="roxy-name" onClick={()=>setLine(n=>n+1)} aria-label="和 Roxy 聊聊"><img src="/roxy/IMG_5010.JPG" alt="Roxy"/><span>Roxy<small>和你一起，慢一点。</small></span><span className="roxy-chat-label">聊聊 ↗</span></button><p aria-live="polite" className="roxy-words">{roxyWords[scene][line%roxyWords[scene].length]}</p>{children&&<div className="roxy-actions">{children}</div>}</aside>;
+}
+function SceneAction({children,onClick,primary=false}:{children:React.ReactNode;onClick:()=>void;primary?:boolean}) {return <button className={`scene-action ${primary?"scene-action-primary":""}`} onClick={onClick}>{children}</button>;}
+
 function IconButton({label,children,onClick,className=""}:{label:string;children:React.ReactNode;onClick?:()=>void;className?:string}) {
   return <button aria-label={label} title={label} onClick={onClick} className={`utility-button grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/20 bg-black/35 text-[#f4e6cb] backdrop-blur-md transition hover:border-[#efc478]/70 hover:bg-[#20160d]/65 ${className}`}>{children}</button>;
 }
@@ -49,6 +69,8 @@ export default function FarfieldHome() {
   const [contrast,setContrast] = useState(false);
   const [fontScale,setFontScale] = useState(1);
   const [pointer,setPointer] = useState({x:0,y:0});
+  const [outdoorPlace,setOutdoorPlace] = useState(0);
+  const [roomPlace,setRoomPlace] = useState(0);
   const audioRef = useRef<{ctx:AudioContext; nodes:AudioNode[]} | null>(null);
 
   useEffect(()=>{
@@ -71,21 +93,20 @@ export default function FarfieldHome() {
   const go = (next:Scene) => setScene(next);
   const outside = scene === "outdoor";
   const room = scene === "interior";
-  const useRoomBg = !outside && scene !== "stars";
+  const photo = `/roxy/${outside?outdoorPhotos[outdoorPlace]:room?roomPhotos[roomPlace]:scenePhotos[scene]}`;
+  const working = !outside && !room && scene!=="desk";
 
   return (
-    <main className={`${weather==="rain"?"scene-rain":"scene-sun"} ${reduced?"reduced-motion":""} ${contrast?"high-contrast":""} relative h-[100svh] w-screen overflow-hidden bg-[#0b1210]`} onPointerMove={e=>!reduced&&setPointer({x:(e.clientX/innerWidth-.5)*10,y:(e.clientY/innerHeight-.5)*8})}>
-      {scene!=="stars" && <img src={outside?"/farfield-outdoor.png":"/cabin-interior.png"} alt={outside?"远山草地、一位独坐的人与一间亮着灯的小木屋":"有壁炉、扶手椅和窗边书桌的木屋室内"} className={`scene-bg ${outside?"outdoor-bg":""}`} style={{transform:`scale(${useRoomBg?1.025:1.01}) translate(${pointer.x*.45}px,${pointer.y*.4}px)`}} />}
-      {outside && <div className="outdoor-depth" aria-hidden="true">
-        <div className="outdoor-depth-layer outdoor-mid"><img src="/farfield-outdoor.png" alt="" className="depth-img" style={{transform:`scale(1.035) translate(${pointer.x*1.25}px,${pointer.y*1.05}px)`}} /></div>
-        <div className="outdoor-depth-layer outdoor-near"><img src="/farfield-outdoor.png" alt="" className="depth-img" style={{transform:`scale(1.065) translate(${pointer.x*2.1}px,${pointer.y*1.75}px)`}} /></div>
-      </div>}
+    <main data-scene={scene} className={`roxy-world ${working?"roxy-working":""} ${weather==="rain"?"scene-rain":"scene-sun"} ${reduced?"reduced-motion":""} ${contrast?"high-contrast":""} relative h-[100svh] w-screen overflow-hidden bg-[#0b1210]`} onPointerMove={e=>!reduced&&e.pointerType==="mouse"&&setPointer({x:(e.clientX/innerWidth-.5)*10,y:(e.clientY/innerHeight-.5)*8})}>
+      <img src={photo} alt="" aria-hidden="true" className="roxy-atmosphere"/>
+      <img key={photo} src={photo} alt={`Roxy · ${sceneNames[scene]}`} className="scene-photo" style={{transform:`translate(${pointer.x*.35}px,${pointer.y*.3}px)`}}/>
+      <div className="roxy-shade" aria-hidden="true"/>
       {scene!=="stars" && <><div className="vignette"/><div className="rain"/><div className="dust absolute inset-0 opacity-20 pointer-events-none"/></>}
 
       <header className="absolute inset-x-0 top-0 z-40 flex items-center justify-between p-4 sm:p-6">
         <button onClick={()=>go("outdoor")} className="flex items-center gap-3 text-left text-[#f4ead5] drop-shadow-lg" aria-label="回到远野">
           <span className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/20 backdrop-blur"><Home size={17}/></span>
-          <span><b className="block text-[.95rem] font-normal tracking-[.28em]">远野心屋</b><small className="hidden text-[.68rem] tracking-[.18em] text-white/55 sm:block">FARFIELD MIND HOUSE</small></span>
+          <span><b className="block text-[.95rem] font-normal tracking-[.28em]">远野心屋</b><small className="hidden text-[.75rem] tracking-[.12em] text-white/65 sm:block">WITH ROXY · {sceneNames[scene]}</small></span>
         </button>
         <div className="flex items-center gap-2">
           <IconButton label={weather==="sun"?"切换为雨天":"切换为晴天"} onClick={()=>setWeather(w=>w==="sun"?"rain":"sun")}>{weather==="sun"?<Sun size={17}/>:<CloudRain size={17}/>}</IconButton>
@@ -102,8 +123,8 @@ export default function FarfieldHome() {
         <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-6 text-white/45">记录仅保存在这台设备的浏览器中。声音默认关闭。</p>
       </aside>}
 
-      {outside && <Outdoor onEnter={()=>go("interior")} />}
-      {room && <Interior onReading={()=>go("reading")} onDesk={()=>go("desk")} onOutside={()=>go("outdoor")} weather={weather}/>} 
+      {outside && <Outdoor onEnter={()=>go("interior")} onWalk={()=>setOutdoorPlace(n=>(n+1)%outdoorPhotos.length)} place={outdoorPlace}/>}
+      {room && <Interior onReading={()=>go("reading")} onDesk={()=>go("desk")} onOutside={()=>go("outdoor")} onChange={()=>setRoomPlace(n=>(n+1)%roomPhotos.length)} weather={weather}/>}
       {scene==="reading" && <Reading onBack={()=>go("interior")} />}
       {scene==="desk" && <Desk onBack={()=>go("interior")} onGo={go}/>} 
       {scene==="write" && <QuickWrite onBack={()=>go("desk")} onStars={()=>go("stars")} />}
@@ -111,62 +132,39 @@ export default function FarfieldHome() {
       {scene==="library" && <Library onBack={()=>go("desk")} onReading={()=>go("reading")} />}
       {scene==="stars" && <StarMap onBack={()=>go("desk")} />}
 
-      {!outside && scene!=="stars" && <div className="ember pointer-events-none absolute bottom-[15%] left-[12%] z-10 h-36 w-36 rounded-full bg-[#ef8e2b]/20 blur-3xl"/>}
+      {working && scene!=="stars" && <RoxyDialogue key={scene} scene={scene} compact/>}
+      <nav className="scene-nav" aria-label="场景导航">{(Object.keys(sceneNames) as Scene[]).map(s=><button key={s} aria-current={scene===s?"page":undefined} onClick={()=>go(s)}>{sceneNames[s]}</button>)}</nav>
     </main>
   );
 }
 
-function Outdoor({onEnter}:{onEnter:()=>void}) {
-  return <section className="outdoor-stage absolute inset-0 z-20">
-    <div className="absolute bottom-[8%] left-[6%] max-w-[28rem] text-[#f3ead8] drop-shadow-[0_3px_14px_#000] sm:bottom-[10%] sm:left-[8%]">
-      <p className="mb-3 text-xs tracking-[.32em] text-white/55">远野 · 无人来访的下午</p>
-      <h1 className="text-[clamp(1.25rem,2.2vw,2rem)] font-normal leading-relaxed tracking-[.08em]">这里没有答案，<br/>只有正在生长的念头。</h1>
-    </div>
-    <div className="entry-guide" aria-hidden="true">
-      <span>沿灯光而行</span>
-      <svg viewBox="0 0 260 118" preserveAspectRatio="none"><path d="M4 17 C 74 12, 128 39, 164 69 S 218 96, 250 105"/><circle cx="251" cy="105" r="3"/></svg>
-    </div>
-    <button className="entry-beacon" data-label="进入木屋" aria-label="进入小木屋" onClick={onEnter}><Home size={14}/><span>进入木屋</span></button>
-    <p className="outdoor-depth-note absolute bottom-5 right-5 text-[.68rem] tracking-[.2em] text-white/45">移动视线，靠近那束暖光</p>
-  </section>;
+function Outdoor({onEnter,onWalk,place}:{onEnter:()=>void;onWalk:()=>void;place:number}) {
+  return <section className="roxy-stage absolute inset-0 z-20"><div className="scene-heading"><p>01 / OUTSIDE · {["雾蓝港口","落日球场","雨夜长廊"][place]}</p><h1>陪 Roxy，<br/>走进雨里的日常。</h1></div><RoxyDialogue scene="outdoor"><SceneAction primary onClick={onEnter}><Home size={17}/>和 Roxy 回屋</SceneAction><SceneAction onClick={onWalk}>换个地方散步 ↗</SceneAction></RoxyDialogue></section>;
 }
 
-function Interior({onReading,onDesk,onOutside,weather}:{onReading:()=>void;onDesk:()=>void;onOutside:()=>void;weather:Weather}) {
-  return <section className="fade-in absolute inset-0 z-20">
-    <div className="absolute bottom-7 left-6 max-w-xs drop-shadow-xl sm:bottom-10 sm:left-[6%]"><p className="text-xs tracking-[.26em] text-[#e8c895]/65">木屋 · {weather==="rain"?"雨落在窗上":"天光越过窗沿"}</p><h1 className="mt-2 text-xl font-normal tracking-[.12em]">火正好，夜还很长。</h1></div>
-    <button className="hotspot left-[1%] top-[36%] h-[49%] w-[28%]" data-label="坐下阅读" aria-label="在壁炉边坐下阅读" onClick={onReading}/>
-    <button className="hotspot right-[4%] top-[37%] h-[48%] w-[48%]" data-label="在窗边写作" aria-label="走到窗边书桌" onClick={onDesk}/>
-    <button onClick={onOutside} className="absolute bottom-6 right-6 flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-xs tracking-[.15em] backdrop-blur transition hover:bg-black/45"><ArrowLeft size={14}/>返回户外</button>
-  </section>;
+function Interior({onReading,onDesk,onOutside,onChange,weather}:{onReading:()=>void;onDesk:()=>void;onOutside:()=>void;onChange:()=>void;weather:Weather}) {
+ return <section className="roxy-stage absolute inset-0 z-20"><div className="scene-heading"><p>02 / AT HOME · {weather==="rain"?"雨落在窗上":"天光越过窗沿"}</p><h1>有你在，<br/>平常的日子也很好。</h1></div><RoxyDialogue scene="interior"><SceneAction primary onClick={onReading}><BookOpen size={17}/>和 Roxy 一起读</SceneAction><SceneAction onClick={onDesk}><Sparkles size={17}/>一起写点什么</SceneAction><SceneAction onClick={onChange}>换个角落</SceneAction><SceneAction onClick={onOutside}>出去走走</SceneAction></RoxyDialogue></section>;
 }
 
 function Reading({onBack}:{onBack:()=>void}) {
   const [page,setPage]=useState(0); const [focus,setFocus]=useState(false);
   const item=readings[page];
-  return <section className={`absolute inset-0 z-30 grid place-items-center bg-[#090c0a]/${focus?"95":"62"} p-4 backdrop-blur-[2px]`}>
-    <button onClick={onBack} className="absolute left-5 top-24 flex items-center gap-2 text-sm text-white/65 hover:text-white"><ArrowLeft size={16}/>离开扶手椅</button>
-    <article key={page} className="page-turn relative mt-10 w-[min(48rem,94vw)] rounded-[1.5rem_2.5rem_2.5rem_1.5rem] border border-[#cdb887]/30 bg-[linear-gradient(100deg,#bba77d_0,#e4d5b3_5%,#efe3c7_53%,#d6c19b_100%)] px-[clamp(1.5rem,6vw,5rem)] py-[clamp(2.4rem,8vh,5.5rem)] text-[#332a20] shadow-[0_30px_100px_#000c,inset_18px_0_30px_#6b543c25]">
+  return <section className={`roxy-reading roxy-work-surface ${focus?"reading-focus":""} absolute inset-0 z-30 p-4`}>
+    <button onClick={onBack} className="work-back"><ArrowLeft size={16}/>回到 Roxy 身边</button>
+    <article key={page} className="roxy-page page-turn rounded-2xl border border-[#d9ddeb]/30 bg-[#f0ede5] px-[clamp(1.5rem,4vw,3rem)] py-8 text-[#332a20] shadow-[0_30px_100px_#0007]">
       <div className="mb-10 flex items-center justify-between border-b border-[#4d3e2a]/20 pb-4 text-xs tracking-[.24em] text-[#695943]"><span>{item.kind}</span><span>{item.date}</span></div>
       <h2 className="mb-7 text-2xl tracking-[.15em] sm:text-3xl">{item.title}</h2><p className="min-h-40 text-[1.05rem] leading-9 tracking-[.06em] sm:text-lg">{item.text}</p>
       <div className="mt-10 flex items-center justify-between"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="disabled:opacity-25">前一页</button><span className="text-xs">— {page+1} / {readings.length} —</span><button disabled={page===readings.length-1} onClick={()=>setPage(p=>p+1)} className="disabled:opacity-25">后一页</button></div>
     </article>
-    <div className="absolute bottom-5 flex gap-2"><button onClick={()=>setPage(Math.floor(Math.random()*readings.length))} className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs tracking-[.12em]">随机翻开一页</button><IconButton label={focus?"退出专注":"专注阅读"} onClick={()=>setFocus(v=>!v)}><Maximize2 size={15}/></IconButton></div>
+    <div className="absolute bottom-5 flex gap-2"><button onClick={()=>setPage(Math.floor(Math.random()*readings.length))} className="rounded-full border border-white/15 bg-black/30 px-4 py-2 text-xs tracking-[.12em]">请 Roxy 随机翻一页</button><IconButton label={focus?"退出专注":"专注阅读"} onClick={()=>setFocus(v=>!v)}><Maximize2 size={15}/></IconButton></div>
   </section>;
 }
 
 function Desk({onBack,onGo}:{onBack:()=>void;onGo:(s:Scene)=>void}) {
-  return <section className="fade-in absolute inset-0 z-30 bg-[#060a08]/25">
-    <button onClick={onBack} className="absolute left-5 top-24 flex items-center gap-2 text-sm text-white/70"><ArrowLeft size={16}/>离开书桌</button>
-    <div className="absolute left-1/2 top-[17%] -translate-x-1/2 text-center drop-shadow-xl"><p className="text-xs tracking-[.3em] text-white/55">窗边书桌</p><h1 className="mt-3 text-xl font-normal tracking-[.16em]">让一个念头，在这里停留。</h1></div>
-    <DeskItem className="bottom-[25%] left-[41%] h-[26%] w-[18%] -rotate-2" label="摊开的纸 · 写下一念" icon={<Sparkles size={18}/>} onClick={()=>onGo("write")}/>
-    <DeskItem className="bottom-[21%] right-[7%] h-[34%] w-[22%] rotate-2" label="星图仪 · 思维星图" icon={<MoonStar size={18}/>} onClick={()=>onGo("stars")}/>
-    <DeskItem className="bottom-[18%] left-[30%] h-[17%] w-[10%]" label="日历 · 今日回望" icon={<CalendarDays size={18}/>} onClick={()=>onGo("review")}/>
-    <DeskItem className="bottom-[14%] right-[27%] h-[15%] w-[14%]" label="旧书 · 记忆书架" icon={<BookOpen size={18}/>} onClick={()=>onGo("library")}/>
-  </section>;
+ return <section className="roxy-stage absolute inset-0 z-30"><div className="scene-heading"><p>04 / LITTLE THOUGHTS · 窗边书桌</p><h1>把心里的话，<br/>慢慢说给 Roxy 听。</h1></div><RoxyDialogue scene="desk"><SceneAction primary onClick={()=>onGo("write")}><Sparkles size={17}/>写下一念</SceneAction><SceneAction onClick={()=>onGo("stars")}><MoonStar size={17}/>一起连接星星</SceneAction><SceneAction onClick={()=>onGo("review")}><CalendarDays size={17}/>今日回望</SceneAction><SceneAction onClick={()=>onGo("library")}><BookOpen size={17}/>记忆书架</SceneAction></RoxyDialogue><button onClick={onBack} className="work-back"><ArrowLeft size={16}/>回到屋里</button></section>;
 }
-function DeskItem({className,label,icon,onClick}:{className:string;label:string;icon:React.ReactNode;onClick:()=>void}) { return <button onClick={onClick} aria-label={label} className={`group absolute rounded-2xl border border-transparent transition hover:border-[#f0c779]/55 hover:bg-[#e9ac4a]/10 hover:shadow-[0_0_50px_#eaa94e25] ${className}`}><span className="absolute left-1/2 top-1/2 flex -translate-x-1/2 translate-y-3 items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-black/60 px-4 py-2 text-xs opacity-0 backdrop-blur transition group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:opacity-100">{icon}{label}</span></button> }
 
-function Panel({title,kicker,onBack,children}:{title:string;kicker:string;onBack:()=>void;children:React.ReactNode}) { return <section className="absolute inset-0 z-30 grid place-items-center bg-[#070b09]/76 p-4 backdrop-blur-md"><button onClick={onBack} className="absolute left-5 top-24 flex items-center gap-2 text-sm text-white/65"><ArrowLeft size={16}/>回到书桌</button><div className="glass fade-in mt-12 max-h-[78vh] w-[min(44rem,94vw)] overflow-auto rounded-3xl p-[clamp(1.5rem,4vw,3.5rem)]"><p className="text-xs tracking-[.28em] text-[#d6ad71]/65">{kicker}</p><h1 className="mb-8 mt-3 text-2xl font-normal tracking-[.16em]">{title}</h1>{children}</div></section> }
+function Panel({title,kicker,onBack,children}:{title:string;kicker:string;onBack:()=>void;children:React.ReactNode}) { return <section className="roxy-work-surface absolute inset-0 z-30 p-4"><button onClick={onBack} className="work-back"><ArrowLeft size={16}/>回到书桌</button><div className="roxy-panel glass fade-in rounded-2xl p-[clamp(1.5rem,3vw,2.5rem)]"><p className="text-sm tracking-[.18em] text-[#b4c5f4]">ROXY / {kicker}</p><h1 className="mb-6 mt-3 text-2xl font-normal tracking-[.08em]">{title}</h1>{children}</div></section> }
 
 function QuickWrite({onBack,onStars}:{onBack:()=>void;onStars:()=>void}) {
   const [text,setText]=useState(""); const [mood,setMood]=useState("平静"); const [saved,setSaved]=useState(false);
@@ -194,7 +192,9 @@ function StarMap({onBack}:{onBack:()=>void}) {
   const importData=(file:File)=>{const reader=new FileReader();reader.onload=()=>{try{const d=JSON.parse(String(reader.result));if(Array.isArray(d.nodes)&&Array.isArray(d.edges)){commit();setNodes(d.nodes);setEdges(d.edges)}}catch{alert("这份文件无法被识别。")}};reader.readAsText(file)};
   useEffect(()=>{const context=(document as unknown as {modelContext?:{registerTool:(tool:unknown,opts?:unknown)=>void}}).modelContext;if(!context?.registerTool)return;const lifecycle=new AbortController();try{context.registerTool({name:"create_thought_node",title:"写入一个念头",description:"在远野心屋的思维星图中创建一个新节点。",inputSchema:{type:"object",properties:{title:{type:"string"},body:{type:"string"}},required:["title"],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:(input:unknown)=>{const v=input as {title:string;body?:string};if(!v.title?.trim())throw new Error("标题不能为空");const id=addNode(800+Math.random()*100,450+Math.random()*100,v.title.trim());setNodes(old=>old.map(n=>n.id===id?{...n,body:v.body||""}:n));return{id,title:v.title}}},{signal:lifecycle.signal})}catch{}return()=>lifecycle.abort()},[addNode]);
   const filtered=useMemo(()=>new Set(nodes.filter(n=>(n.title+n.body+n.tags.join(" ")).toLowerCase().includes(search.toLowerCase())).map(n=>n.id)),[nodes,search]);
-  return <section className="absolute inset-0 z-50 overflow-hidden bg-[radial-gradient(circle_at_52%_45%,#1a2926_0,#0b1314_47%,#070b0c_100%)]">
+  return <section className="roxy-stars absolute inset-0 z-50 overflow-hidden bg-[#0b1025]/80">
+    <div className="star-roxy-photo" aria-hidden="true"><img src="/roxy/IMG_5864.PNG" alt=""/></div>
+    <RoxyDialogue scene="stars" compact><SceneAction primary onClick={()=>addNode()}><Plus size={17}/>和 Roxy 点亮一颗星</SceneAction></RoxyDialogue>
     <div className="pointer-events-none absolute inset-0 opacity-60" style={{backgroundImage:"radial-gradient(#c9d7c9 0.6px,transparent 0.8px)",backgroundSize:"44px 44px"}}/>
     <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between p-4 sm:p-6"><button onClick={onBack} className="flex items-center gap-2 text-sm text-white/65"><ArrowLeft size={16}/>回到书桌</button><p className="hidden text-xs tracking-[.28em] text-white/40 sm:block">思维星图 · 本地自动保存</p></header>
     <div className="star-toolbar glass absolute left-1/2 top-20 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full p-1.5">

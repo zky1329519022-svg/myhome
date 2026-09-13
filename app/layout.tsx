@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "远野心屋 · 让念头慢慢生长",
-  description: "一处用来安放想法、记忆与灵感的私人精神空间。",
+  title: "远野心屋 · 与 Roxy 一起安放念头",
+  description: "与 Roxy 一起散步、阅读、写作，在雨蓝色的日常里安放想法、记忆与灵感。",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
